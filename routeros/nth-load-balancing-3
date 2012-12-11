@@ -1,0 +1,36 @@
+/ip address add address=10.0.0.1/24 interface=ether2-wan1
+/ip address add address=10.0.1.1/24 interface=ether3-wan2
+/ip address add address=10.0.2.1/24 interface=ether4-wan3
+/ip address add address=192.168.0.1/16 interface=ether1-lan
+
+/ip firewall address-list add address=192.168.0.1/16 list=local
+
+/ip route add gateway=10.0.0.2
+/ip route add gateway=10.0.0.2 routing-mark=first
+/ip route add gateway=10.0.1.2 routing-mark=second
+/ip route add gateway=10.0.2.2 routing-mark=third
+
+/ip firewall nat add chain=srcnat out-interface=wan1 action=masquerade
+/ip firewall nat add chain=srcnat out-interface=wan2 action=masquerade
+/ip firewall nat add chain=srcnat out-interface=wan3 action=masquerade
+
+/ip firewall mangle add action=add-src-to-address-list address-list=first address-list-timeout=0s chain="mark new unseen" disabled=no nth=3,1
+/ip firewall mangle add action=add-src-to-address-list address-list=second address-list-timeout=0s chain="mark new unseen" disabled=no nth=3,2
+/ip firewall mangle add action=add-src-to-address-list address-list=third address-list-timeout=0s chain="mark new unseen" disabled=no nth=3,3
+/ip firewall mangle add action=add-src-to-address-list address-list=seen address-list-timeout=0s chain="mark new unseen" disabled=no
+/ip firewall mangle add action=jump chain="mark new unseen" disabled=no jump-target="mark connection"
+
+/ip firewall mangle add action=mark-connection chain="mark connection" disabled=no new-connection-mark=first_conn passthrough=yes src-address-list=first
+/ip firewall mangle add action=mark-connection chain="mark connection" disabled=no new-connection-mark=second_conn passthrough=yes src-address-list=second
+/ip firewall mangle add action=mark-connection chain="mark connection" disabled=no new-connection-mark=third_conn passthrough=yes src-address-list=thrid
+/ip firewall mangle add action=mark-routing chain="mark connection" connection-mark=first_conn disabled=no new-routing-mark=first passthrough=no
+/ip firewall mangle add action=mark-routing chain="mark connection" connection-mark=second_conn disabled=no new-routing-mark=second passthrough=no
+/ip firewall mangle add action=mark-routing chain="mark connection" connection-mark=third_conn disabled=no new-routing-mark=third passthrough=no
+
+/ip firewall mangle add action=mark-routing chain=prerouting connection-mark=first_conn disabled=no new-routing-mark=first passthrough=no src-address-list=first
+/ip firewall mangle add action=mark-routing chain=prerouting connection-mark=second_conn disabled=no new-routing-mark=second passthrough=no src-address-list=second
+/ip firewall mangle add action=mark-routing chain=prerouting connection-mark=third_conn disabled=no new-routing-mark=third passthrough=no src-address-list=third
+
+/ip firewall mangle add action=jump chain=prerouting connection-state=new disabled=no jump-target="mark connection" src-address-list=local
+
+/ip firewall mangle add action=jump chain=prerouting connection-state=new disabled=no jump-target="mark new unseen" src-address-list=local

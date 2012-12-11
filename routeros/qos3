@@ -1,0 +1,30 @@
+/ip firewall mangle
+add action=mark-packet chain=postrouting comment="Link-critical traffic (DHCP)" disabled=no dst-port=67 new-packet-mark=link_critical out-interface=ether4-wan3 passthrough=no protocol=udp src-port=68
+add action=mark-packet chain=postrouting comment="IPSec VPN (same priority as link critical)" disabled=no new-packet-mark=link_critical out-interface=ether4-wan3 passthrough=no protocol=ipsec-esp
+add action=mark-packet chain=postrouting comment="Time-critical traffic (DNS, TCP control packets, certain ACK packets, new connections)" disabled=no dst-port=53 new-packet-mark=time_critical out-interface=ether4-wan3 passthrough=no protocol=udp
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=time_critical out-interface=ether4-wan3 passthrough=no protocol=tcp tcp-flags=fin,syn,rst
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=time_critical out-interface=ether4-wan3 packet-size=40-89 passthrough=no protocol=tcp tcp-flags=ack
+add action=mark-packet chain=postrouting comment="" connection-state=new disabled=no new-packet-mark=time_critical out-interface=ether4-wan3 passthrough=no protocol=tcp
+add action=mark-packet chain=postrouting comment="Critical traffic (just some ACK packets)" disabled=no new-packet-mark=critical out-interface=ether4-wan3 packet-size=90-159 passthrough=no protocol=tcp tcp-flags=ack
+add action=mark-packet chain=postrouting comment="High-priority interactive traffic (SSH, WinBox, certain ACK packets)" disabled=no new-packet-mark=high_pri_interactive out-interface=ether4-wan3 passthrough=no port=22,2200 protocol=tcp
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=high_pri_interactive out-interface=ether4-wan3 passthrough=no port=8291 protocol=tcp
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=high_pri_interactive out-interface=ether4-wan3 packet-size=160-249 passthrough=no protocol=tcp tcp-flags=ack
+add action=mark-packet chain=postrouting comment="Low-priority interactive traffic (HTTP, HTTPS, DelugeWebUI)" disabled=no new-packet-mark=low_pri_interactive out-interface=ether4-wan3 passthrough=no port=80,443,8112 protocol=tcp
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=low_pri_interactive out-interface=ether4-wan3 packet-size=250-359 passthrough=no protocol=tcp tcp-flags=ack
+add action=mark-packet chain=postrouting comment="High-priority non-interactive traffic (FTP)" connection-type=ftp disabled=no new-packet-mark=high_pri_non_interactive out-interface=ether4-wan3 passthrough=no protocol=tcp
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=high_pri_non_interactive out-interface=ether4-wan3 packet-size=360-489 passthrough=no protocol=tcp tcp-flags=ack
+add action=mark-packet chain=postrouting comment="Low-priority non-interactive traffic (POP, SMTP)" disabled=no new-packet-mark=low_pri_non_interactive out-interface=ether4-wan3 passthrough=no port=25,110 protocol=tcp
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=low_pri_non_interactive out-interface=ether4-wan3 packet-size=490-639 passthrough=no protocol=tcp tcp-flags=ack
+add action=mark-packet chain=postrouting comment="Non-critical traffic (P2P)" disabled=no new-packet-mark=non_critical out-interface=ether4-wan3 packet-size=640-809 passthrough=no protocol=tcp tcp-flags=ack
+add action=mark-packet chain=postrouting comment="" disabled=no new-packet-mark=non_critical out-interface=ether4-wan3 passthrough=no protocol=tcp
+
+/queue tree
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name="Outgoing queue" packet-mark="" parent=ether4-wan3 priority=8
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name="Low-pri non-interactive" packet-mark=low_pri_non_interactive parent="Outgoing queue" priority=7 queue=default
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name=Non-critical packet-mark=non_critical parent="Outgoing queue" priority=8 queue=non_critical_queue
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name=Link-critical packet-mark=link_critical parent="Outgoing queue" priority=1 queue=default
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name=Time-critical packet-mark=time_critical parent="Outgoing queue" priority=2 queue=default
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name=Critical packet-mark=critical parent="Outgoing queue" priority=3 queue=default
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name="High-pri interactive" packet-mark=high_pri_interactive parent="Outgoing queue" priority=4 queue=default
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name="Low-pri interactive" packet-mark=low_pri_interactive parent="Outgoing queue" priority=5 queue=default
+add burst-limit=0 burst-threshold=0 burst-time=0s disabled=no limit-at=0 max-limit=2M name="High-pri non-interactive" packet-mark=high_pri_non_interactive parent="Outgoing queue" priority=6 queue=default

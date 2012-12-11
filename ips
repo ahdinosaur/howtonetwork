@@ -1,0 +1,16 @@
+   lan         wap1          wap2          wap3
+    |           |             |             |
+  __|___________|_____________|_____________|___
+  |ether1    ether2         ether3       ether4 |
+  |               routerboard                   |
+  |_____________________________________________|
+
+10.0.0.1 wap1
+[10.0.1.1 wap2]
+[10.0.2.1 wap3]
+
+192.168.0.1/24 router ip address
+255.255.0.0 router netmask
+
+we use 192.168.0.0-255 for static ips
+and 192.168.1.0-255.255 for dhcpd.
